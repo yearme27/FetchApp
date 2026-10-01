@@ -20,6 +20,11 @@ android {
         }
     }
 
+    testOptions {
+        // android.util.Log etc. return defaults instead of throwing in JVM unit tests.
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
