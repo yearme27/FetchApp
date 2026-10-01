@@ -1,18 +1,16 @@
 package com.example.fetchapp.view
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.fetchapp.R
 import com.example.fetchapp.StickyHeaderItemDecoration
-
 import com.example.fetchapp.model.ItemRepository
 import com.example.fetchapp.model.ItemViewModelFactory
 import com.example.fetchapp.viewmodel.ItemViewModel
-
-
 
 class ResultActivity : AppCompatActivity() {
 
@@ -24,37 +22,44 @@ class ResultActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_result)
 
-        // Initialize RecyclerView and set its layout manager
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        // Initialize the adapter with an empty map and set it to the RecyclerView
         adapter = ItemAdapter(mapOf())
         recyclerView.adapter = adapter
 
-        // Apply StickyHeaderItemDecoration to keep the header at the top while scrolling
-        val stickyHeaderDecoration = StickyHeaderItemDecoration(adapter)
-        recyclerView.addItemDecoration(stickyHeaderDecoration)
+        // Keep the current section header pinned to the top while scrolling.
+        recyclerView.addItemDecoration(StickyHeaderItemDecoration(adapter))
 
-        // Initialize the ViewModel to observe the data
-        val repository = ItemRepository()
-        val factory = ItemViewModelFactory(application, repository)  // Pass the application context
+        // Re-open the sections that were open before a rotation, once the data arrives.
+        savedInstanceState?.getIntegerArrayList(KEY_EXPANDED)?.let {
+            adapter.restoreExpandedListIds(it)
+        }
+
+        val factory = ItemViewModelFactory(ItemRepository())
         viewModel = ViewModelProvider(this, factory)[ItemViewModel::class.java]
 
-
-        // Observe the LiveData for grouped items from the ViewModel
         viewModel.items.observe(this) { groupedItems ->
-            // Update the adapter with the new grouped items
             if (groupedItems != null) {
                 adapter.updateData(groupedItems)
             }
         }
 
-        // Trigger the ViewModel to fetch the items
+        viewModel.error.observe(this) { message ->
+            if (message != null) {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                viewModel.onErrorShown()
+            }
+        }
+
         viewModel.fetchItems()
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putIntegerArrayList(KEY_EXPANDED, ArrayList(adapter.getExpandedListIds()))
+    }
+
+    private companion object {
+        const val KEY_EXPANDED = "expanded_list_ids"
+    }
 }
-
-
-
-
-

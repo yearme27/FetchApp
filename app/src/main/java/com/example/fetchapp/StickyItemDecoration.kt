@@ -7,43 +7,23 @@ import com.example.fetchapp.view.ItemAdapter
 
 class StickyHeaderItemDecoration(private val adapter: ItemAdapter) : RecyclerView.ItemDecoration() {
 
-    private val headerCache = mutableMapOf<Int, View>()  // Cache to store header views
+    // Header views keyed by listId, not by adapter position. Positions shift whenever a
+    // section expands or collapses, which would pin the wrong header.
+    private val headerCache = mutableMapOf<Int, View>()
 
-//    override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-//        super.onDrawOver(c, parent, state)
-//
-//        val topChild = parent.getChildAt(0) ?: return
-//        val topChildPosition = parent.getChildAdapterPosition(topChild)
-//        if (topChildPosition == RecyclerView.NO_POSITION) return
-//
-//        val currentHeaderPosition = adapter.getHeaderPositionForItem(topChildPosition)
-//        val header = getHeaderView(parent, currentHeaderPosition)
-//        fixLayoutSize(parent, header)
-//
-//        val contactPoint = header.bottom
-//        val childInContact = getChildInContact(parent, contactPoint) ?: return
-//
-//        if (adapter.isHeader(parent.getChildAdapterPosition(childInContact))) {
-//            moveHeader(c, header, childInContact)
-//        } else {
-//            drawHeader(c, header)
-//        }
-//    }
-
-    //claude
     override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
         val topChild = parent.getChildAt(0) ?: return
         val topChildPosition = parent.getChildAdapterPosition(topChild)
         if (topChildPosition == RecyclerView.NO_POSITION) return
 
         val currentHeaderPos = adapter.getHeaderPositionForItem(topChildPosition)
+        if (!adapter.isHeader(currentHeaderPos)) return
+
         val header = getHeaderViewForPosition(parent, currentHeaderPos)
         fixLayoutSize(parent, header)
-        //
-        // Always set translationZ to bring the header to the front
         header.translationZ = 10f
-        val contactPoint = header.bottom
-        val childInContact = getChildInContact(parent, contactPoint)
+
+        val childInContact = getChildInContact(parent, header.bottom)
         if (childInContact != null && adapter.isHeader(parent.getChildAdapterPosition(childInContact))) {
             moveHeader(c, header, childInContact)
         } else {
@@ -51,22 +31,12 @@ class StickyHeaderItemDecoration(private val adapter: ItemAdapter) : RecyclerVie
         }
     }
 
-    //claude
     private fun getHeaderViewForPosition(parent: RecyclerView, position: Int): View {
-        return headerCache.getOrPut(position) {
+        return headerCache.getOrPut(adapter.getHeaderListId(position)) {
             val header = adapter.getHeaderViewForItem(position, parent)
             fixLayoutSize(parent, header)
             header
         }
-    }
-
-    private fun getHeaderView(parent: RecyclerView, headerPosition: Int): View {
-        if (!headerCache.containsKey(headerPosition)) {
-            val header = adapter.getHeaderViewForItem(headerPosition, parent)
-            fixLayoutSize(parent, header)
-            headerCache[headerPosition] = header
-        }
-        return headerCache[headerPosition]!!
     }
 
     private fun getChildInContact(parent: RecyclerView, contactPoint: Int): View? {
@@ -94,7 +64,6 @@ class StickyHeaderItemDecoration(private val adapter: ItemAdapter) : RecyclerVie
     }
 
     private fun fixLayoutSize(parent: RecyclerView, view: View) {
-        // Check if the view is already measured, no need to remeasure
         if (view.measuredWidth == 0 || view.measuredHeight == 0) {
             val widthSpec = View.MeasureSpec.makeMeasureSpec(parent.width, View.MeasureSpec.EXACTLY)
             val heightSpec = View.MeasureSpec.makeMeasureSpec(parent.height, View.MeasureSpec.UNSPECIFIED)
@@ -102,5 +71,4 @@ class StickyHeaderItemDecoration(private val adapter: ItemAdapter) : RecyclerVie
             view.layout(0, 0, view.measuredWidth, view.measuredHeight)
         }
     }
-
 }
